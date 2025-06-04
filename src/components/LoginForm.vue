@@ -34,7 +34,6 @@ import { useRouter } from 'vue-router'
 import Navbar from "./Navbar.vue";
 
 const router = useRouter()
-
     const form = reactive({
         username:'',
         password:''
@@ -47,10 +46,10 @@ const router = useRouter()
         }
         try{
                     let response = await axios.post('http://localhost:5002/api/user/login',request)
-                    debugger
                     if(response.status == 200){
                     localStorage.setItem("token",response.data.token)
-                    localStorage.setItem("user",response.data.user)
+                    localStorage.setItem("username",response.data.user.username)
+                    localStorage.setItem("userId",response.data.user.id)
                         router.push('/dashboard')
                     }
         }

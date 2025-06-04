@@ -27,7 +27,7 @@ const route = useRoute()
 
 
 watchEffect(() => {
-  debugger
+
   if (route.path === '/register') {
     currentComponent.value = RegisterForm
   } else if (route.path === '/login') {

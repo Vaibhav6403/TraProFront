@@ -8,14 +8,22 @@
               <li @click="filterLocations(filter)">{{ filter }}</li>
             </template>
             <div class="form-check form-switch">
-              <input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckDefault" @change="socialModeChange" v-model="socialmode">
-              <label class="form-check-label" for="flexSwitchCheckDefault">Social Mode</label>
+              <input
+                class="form-check-input"
+                type="checkbox"
+                role="switch"
+                id="flexSwitchCheckDefault"
+                @change="socialModeChange"
+                v-model="socialmode"
+              />
+              <label class="form-check-label" for="flexSwitchCheckDefault"
+                >Social Mode</label
+              >
             </div>
+            <button @click="logOut">LogOut</button>
           </ul>
         </div>
-        <div class="navbar-sec">
-
-        </div>
+        <div class="navbar-sec"></div>
       </div>
     </div>
     <div
@@ -62,32 +70,57 @@
               <label for="username">Name</label>
             </div>
             <div class="form-group">
-              <input
-                type="text"
-                placeholder=" "
-                id="category"
-                v-model="locationData.category"
-              />
-              <label for="category">Category</label>
+              <label for="experienceType" class="select-label">Experience Type</label>
+              <select id="experienceType" v-model="locationData.experienceType">
+                <option disabled value="">Select experience</option>
+                <option
+                  v-for="option in locationData.experienceOptions"
+                  :key="option"
+                >
+                  {{ option }}
+                </option>
+              </select>
             </div>
+
+            <!-- Preference -->
             <div class="form-group">
-              <input
-                type="text"
-                placeholder=" "
-                id="preference"
-                v-model="locationData.preference"
-              />
-              <label for="preference">Preference</label>
+              <label for="preference" class="select-label">Preference</label>
+              <select id="preference" v-model="locationData.preference">
+                <option disabled value="">Select preference</option>
+                <option
+                  v-for="option in locationData.preferenceOptions"
+                  :key="option"
+                >
+                  {{ option }}
+                </option>
+              </select>
             </div>
+
+            <!-- Mood-based -->
             <div class="form-group">
-              <input
-                type="text"
-                placeholder=" "
-                id="person"
-                v-model="locationData.persons"
-              />
-              <label for="person">Persons</label>
+              <label for="moodBased" class="select-label">Mood-based</label>
+              <select id="moodBased" v-model="locationData.moodBased">
+                <option disabled value="">Select mood</option>
+                <option
+                  v-for="option in locationData.moodOptions"
+                  :key="option"
+                >
+                  {{ option }}
+                </option>
+              </select>
             </div>
+
+            <!-- Time of Day -->
+            <div class="form-group">
+              <label for="timeOfDay" class="select-label">Time of Day</label>
+              <select id="timeOfDay" v-model="locationData.timeOfDay">
+                <option disabled value="">Select time</option>
+                <option v-for="option in locationData.timeOfDayOptions" :key="option">
+                  {{ option }}
+                </option>
+              </select>
+            </div>
+
             <div class="form-group">
               <input
                 type="text"
@@ -158,6 +191,7 @@ import maplibregl from "maplibre-gl";
 import markerImage from "../assets/mapmarker.png";
 import { Modal } from "bootstrap";
 import axios from "axios";
+import { useRouter } from "vue-router";
 import Navbar from "./Navbar.vue";
 const modalInstance = ref(null);
 const map = ref(null);
@@ -165,6 +199,7 @@ const isMenuOpen = ref(false);
 const locations = ref([]);
 const pointerMode = ref("current");
 const socialmode = ref(false);
+const router = useRouter();
 const coordinatesCurr = reactive({
   lat: 0,
   lon: 0,
@@ -173,35 +208,64 @@ const locationData = reactive({
   name: "",
   latitude: "",
   longitude: "",
-  category: "",
+  experienceType: "",
   preference: "",
+  moodBased: "",
+  timeOfDay: "",
+  maxTime: "",
   price: "",
   persons: "",
   username: "",
+  experienceOptions: [
+    "Must-visit",
+    "Scenic",
+    "Hidden Gem",
+    "Budget Friendly",
+    "Lively",
+    "Peaceful",
+    "Aesthetic",
+  ],
+  preferenceOptions: ["Family", "Date", "Friends", "Solo", "Group Trips"],
+  moodOptions: ["Romantic", "Chill", "Adventurous", "Unique", "Trending"],
+  timeOfDayOptions: [
+    "Best at Sunrise",
+    "Best at Sunset",
+    "Night View",
+    "Day Activity",
+  ],
 });
 const markers = reactive([]);
 const filters = reactive(["hotel", "office", "family", "date", "All"]);
 const selectedLocation = ref(null);
 const popoverPosition = ref({ x: 0, y: 0 });
+const userInfo = reactive({
+  username: "",
+  token: "",
+});
 onMounted(() => {
   getUserLocation();
-  let userId = localStorage.getItem("userId");
+  let userId = localStorage.getItem("username");
+  userInfo.token = localStorage.getItem("token");
   locationData.username = userId;
   getLocations();
 });
 
 const getLocations = async () => {
-  debugger;
   try {
     let request = {
       username: locationData.username,
     };
     const response = await axios.post(
       "http://localhost:5002/api/user/get-locations",
-      request
+      request,
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      }
     );
     locations.value = response.data.locations;
-    createMarkers(locations);
+    createMarkers(locations.value);
 
     console.log(response);
   } catch (error) {
@@ -209,32 +273,32 @@ const getLocations = async () => {
   }
 };
 
-const createMarkers = (locations)=>{
-      locations.value.forEach((location) => {
-      let locationCor = location.location.coordinates;
-      const markerEl = document.createElement("img");
-      markerEl.src = markerImage;
-      markerEl.style.width = "30px";
-      markerEl.style.height = "30px";
-      markerEl.dataset.id = location._id;
-      let marker = new maplibregl.Marker({ element: markerEl })
-        .setLngLat(locationCor)
-        .addTo(map.value);
-      marker.category = location.category;
-      markerEl.addEventListener("click", () => {
-        selectedLocation.value = location;
+const createMarkers = (locations) => {
+  debugger;
+  locations.forEach((location) => {
+    let locationCor = location.location.coordinates;
+    const markerEl = document.createElement("img");
+    markerEl.src = markerImage;
+    markerEl.style.width = "30px";
+    markerEl.style.height = "30px";
+    markerEl.dataset.id = location._id;
+    let marker = new maplibregl.Marker({ element: markerEl })
+      .setLngLat(locationCor)
+      .addTo(map.value);
+    marker.category = location.category;
+    markerEl.addEventListener("click", () => {
+      selectedLocation.value = location;
 
-        const [lng, lat] = location.location.coordinates;
-        const point = map.value.project([lng, lat]);
+      const [lng, lat] = location.location.coordinates;
+      const point = map.value.project([lng, lat]);
 
-        popoverPosition.value = { x: point.x, y: point.y };
-      });
-      markers.push(marker);
+      popoverPosition.value = { x: point.x, y: point.y };
     });
-}
+    markers.push(marker);
+  });
+};
 
 const filterLocations = (location) => {
-  debugger;
   markers.forEach((marker) => {
     const markerCategory = marker.category;
     const isVisible = markerCategory == location || location === "All";
@@ -297,7 +361,6 @@ function initMap(centerCoords) {
     zoom: 13,
   });
   map.value.on("click", (e) => {
-    debugger;
     if (pointerMode.value == "click") {
       const clickedLngLat = e.lngLat;
       console.log("The clicked lat long is", clickedLngLat);
@@ -320,23 +383,22 @@ function initMap(centerCoords) {
     .setPopup(new maplibregl.Popup().setText("You are here"))
     .addTo(map.value);
 
-//   map.value.on("move", () => {
-//     debugger
-//   if (selectedLocation.value) {
-//     const [lng, lat] = selectedLocation.value.location.coordinates;
-//     const point = map.value.project([lng, lat]);
-//     popoverPosition.value = { x: point.x, y: point.y };
-//   }
-// });
+  //   map.value.on("move", () => {
+  //     debugger
+  //   if (selectedLocation.value) {
+  //     const [lng, lat] = selectedLocation.value.location.coordinates;
+  //     const point = map.value.project([lng, lat]);
+  //     popoverPosition.value = { x: point.x, y: point.y };
+  //   }
+  // });
 }
 
 function toggleMenu() {
   isMenuOpen.value = !isMenuOpen.value;
 }
 function togglePointer(value) {
-  debugger;
   pointerMode.value = value;
-  if ((pointerMode.value = "current")) {
+  if (pointerMode.value == "current") {
     const modalEl = document.getElementById("exampleModal");
     modalInstance.value = new Modal(modalEl);
     locationData.latitude = coordinatesCurr.lat;
@@ -354,18 +416,25 @@ const addLocation = async () => {
     price: locationData.price,
     persons: locationData.persons,
     username: locationData.username,
+    experienceType:locationData.experienceType,
+    preference: locationData.preference,
+    moodBased: locationData.moodBased,
+    timeOfDay: locationData.timeOfDay,
   };
   try {
     let response = await axios.post(
       "http://localhost:5002/api/user/add-location",
-      request
+      request,
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      }
     );
-    debugger;
     if (response.status == 201) {
       console.log("response", response);
       modalInstance.value.hide();
     }
-    debugger;
     const markerEl = document.createElement("img");
     markerEl.src = markerImage;
     markerEl.style.width = "30px";
@@ -379,15 +448,33 @@ const addLocation = async () => {
     console.error(error);
   }
 };
-const socialModeChange = async () =>{
-  socialmode = !socialmode;
-  if(socialmode){
-
+const socialModeChange = async () => {
+  socialmode.value = !socialmode.value;
+  if (socialmode) {
+    try {
+      let request = {
+        username: locationData.username,
+      };
+      let response = await axios.post(
+        "http://localhost:5002/api/user/get-friends-location",
+        request,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+      createMarkers(response?.data?.locations);
+    } catch (error) {}
+  } else {
   }
-  else{
-    
-  }
-}
+};
+const logOut = async () => {
+  localStorage.removeItem("token");
+  localStorage.removeItem("userId");
+  localStorage.removeItem("username");
+  router.push("/login");
+};
 </script>
 
 <style scoped>
@@ -548,6 +635,12 @@ const socialModeChange = async () =>{
   font-size: 14px;
   color: #777;
   transition: top 0.3s ease, font-size 0.3s ease, color 0.3s ease;
+}
+.select-label{
+  position: relative !important;
+  left: 0px !important;
+  top: 0px !important;
+  margin-right: 5px;
 }
 .form-group input:focus {
   border-color: #007bff;
