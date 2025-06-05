@@ -21,6 +21,75 @@
               >
             </div>
             <button @click="logOut">LogOut</button>
+            <div class="user-search">
+              <input
+                type="text"
+                v-model="searchQuery"
+                placeholder="Search users..."
+              />
+              <button @click="searchUsers">Search</button>
+
+              <ul class="list-group position-absolute w-100 z-3 mt-1">
+                <li
+                  v-for="user in searchResults"
+                  :key="user.id"
+                  class="list-group-item d-flex justify-content-between align-items-center"
+                >
+                  <span>{{ user.username }}</span>
+                  <!-- <span>{{ userFriends.value && !userFriends.value.includes(user.username) }}</span> -->
+
+                  <button
+                    v-if="isFriendCheck(user.username)"
+                    class="btn btn-sm btn-primary"
+                    @click="addFriend(user.username)"
+                  >
+                    Add Friend
+                  </button>
+
+                  <!-- <span
+                    v-else
+                    @click="removeFriend(user.id)"
+                    style="cursor: pointer"
+                  >
+                    ❌
+                  </span> -->
+                </li>
+              </ul>
+            </div>
+            <div>
+              <div class="notification-bell">
+                <i class="fa-solid fa-bell"></i>
+                <span
+                  v-if="friendRequestsCheck"
+                  class="notification-dot"
+                ></span>
+              </div>
+              <ul class="list-group position-absolute w-100 z-3 mt-1">
+                <li
+                  v-for="(friend, index) in friendRequests"
+                  :key="index"
+                  class="list-group-item d-flex justify-content-between align-items-center"
+                >
+                  <span>{{ friend }}</span>
+                  <!-- <span>{{ userFriends.value && !userFriends.value.includes(user.username) }}</span> -->
+
+                  <button
+                    class="btn btn-sm btn-primary"
+                    @click="acceptFriendRequest(friend)"
+                  >
+                    Accept Request
+                  </button>
+
+                  <!-- <span
+                    v-else
+                    @click="removeFriend(user.id)"
+                    style="cursor: pointer"
+                  >
+                    ❌
+                  </span> -->
+                </li>
+              </ul>
+            </div>
           </ul>
         </div>
         <div class="navbar-sec"></div>
@@ -70,7 +139,9 @@
               <label for="username">Name</label>
             </div>
             <div class="form-group">
-              <label for="experienceType" class="select-label">Experience Type</label>
+              <label for="experienceType" class="select-label"
+                >Experience Type</label
+              >
               <select id="experienceType" v-model="locationData.experienceType">
                 <option disabled value="">Select experience</option>
                 <option
@@ -115,7 +186,10 @@
               <label for="timeOfDay" class="select-label">Time of Day</label>
               <select id="timeOfDay" v-model="locationData.timeOfDay">
                 <option disabled value="">Select time</option>
-                <option v-for="option in locationData.timeOfDayOptions" :key="option">
+                <option
+                  v-for="option in locationData.timeOfDayOptions"
+                  :key="option"
+                >
                   {{ option }}
                 </option>
               </select>
@@ -186,7 +260,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref, reactive } from "vue";
+import { onMounted, ref, reactive, onUnmounted } from "vue";
 import maplibregl from "maplibre-gl";
 import markerImage from "../assets/mapmarker.png";
 import { Modal } from "bootstrap";
@@ -199,6 +273,10 @@ const isMenuOpen = ref(false);
 const locations = ref([]);
 const pointerMode = ref("current");
 const socialmode = ref(false);
+const searchResults = ref([]);
+const userFriends = ref([]);
+const friendRequests = ref([]);
+const searchQuery = ref("");
 const router = useRouter();
 const coordinatesCurr = reactive({
   lat: 0,
@@ -248,7 +326,134 @@ onMounted(() => {
   userInfo.token = localStorage.getItem("token");
   locationData.username = userId;
   getLocations();
+  getUserFriends();
+  getFriendRequests();
 });
+
+onUnmounted(()=>{
+  clearInterval(intervalId);
+})
+
+const acceptFriendRequest = async (friendUsername) => {
+  try {
+    let request = {
+      username: locationData.username,
+      friendUsername: friendUsername,
+    };
+    let response = await axios.post(
+      "http://localhost:5002/api/user/accept-friend-request",
+      request,
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      }
+    );
+    debugger;
+    if (response.status === 200) {
+      friendRequests.value = friendRequests.value.filter(
+        (username) => username !== friendUsername
+      );
+    } 
+    console.log(response);
+  } catch (error) {
+    console.error("the error in accept friend request is", error);
+  }
+};
+
+const getFriendRequests = async () => {
+  try {
+    let request = {
+      username: locationData.username,
+    };
+    let response = await axios.post(
+      "http://localhost:5002/api/user/get-friend-requests",
+      request,
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      }
+    );
+    friendRequests.value = response.data.friendRequestUsernames;
+  } catch (error) {
+    console.error("the error in the getting friend request is", error);
+  }
+};
+const intervalId =  setInterval(getFriendRequests, 10000);
+
+const getUserFriends = async () => {
+  try {
+    let request = {
+      username: locationData.username,
+    };
+    let response = await axios.post(
+      "http://localhost:5002/api/user/get-friends",
+      request,
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      }
+    );
+    userFriends.value = response.data.userFriends.map(
+      (friend) => friend.username
+    );
+  } catch (error) {
+    console.error("the error in the get user friends is", error);
+  }
+};
+const isFriendCheck = (username) => {
+  debugger;
+  return !userFriends.value.includes(username);
+};
+const friendRequestsCheck = () => {
+  return friendRequests && friendRequests.length;
+};
+const addFriend = async (friendUsername) => {
+  try {
+    let request = {
+      username: locationData.username,
+      friendUsername: friendUsername,
+    };
+    let response = await axios.post(
+      "http://localhost:5002/api/user/add-friend",
+      request,
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      }
+    );
+    console.log("user added", response);
+  } catch (error) {
+    console.error("the error in add friends is", error);
+  }
+};
+const searchUsers = async () => {
+  try {
+    let request = {
+      username: searchQuery.value,
+    };
+    let response = await axios.post(
+      "http://localhost:5002/api/user/search-friends",
+      request,
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      }
+    );
+    debugger;
+    searchResults.value = response.data.friends;
+    // console.log(response.data.friends);
+    // searchResults.length = 0; // clear it first
+    // response.data.friends.forEach((friend) => {
+    //   searchResults.push(friend)}
+    // );
+    console.log(searchResults.value.length);
+  } catch (error) {}
+};
 
 const getLocations = async () => {
   try {
@@ -416,7 +621,7 @@ const addLocation = async () => {
     price: locationData.price,
     persons: locationData.persons,
     username: locationData.username,
-    experienceType:locationData.experienceType,
+    experienceType: locationData.experienceType,
     preference: locationData.preference,
     moodBased: locationData.moodBased,
     timeOfDay: locationData.timeOfDay,
@@ -636,7 +841,7 @@ const logOut = async () => {
   color: #777;
   transition: top 0.3s ease, font-size 0.3s ease, color 0.3s ease;
 }
-.select-label{
+.select-label {
   position: relative !important;
   left: 0px !important;
   top: 0px !important;
@@ -683,5 +888,36 @@ const logOut = async () => {
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
   z-index: 999;
   transform: translate(-50%, -100%); /* position above the marker */
+}
+.user-search {
+  position: relative;
+}
+
+.search-dropdown,
+.list-group.position-absolute {
+  max-height: 300px;
+  overflow-y: auto;
+  background: white;
+  z-index: 1050;
+  border: 1px solid #ccc;
+  top: 25px;
+}
+
+.notification-bell {
+  position: relative;
+  display: inline-block;
+  font-size: 24px;
+  color: #007bff;
+}
+
+.notification-dot {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 10px;
+  height: 10px;
+  background-color: red;
+  border-radius: 50%;
+  border: 2px solid white;
 }
 </style>
