@@ -80,181 +80,298 @@
                     Accept Request
                   </button>
 
-                  <!-- <span
-                    v-else
-                    @click="removeFriend(user.id)"
-                    style="cursor: pointer"
-                  >
-                    ❌
-                  </span> -->
                 </li>
               </ul>
             </div>
+            <button class="btn btn-success" @click="showCreateTripModal">
+              Create Trip
+            </button>
           </ul>
         </div>
         <div class="navbar-sec"></div>
       </div>
     </div>
-    <div
-      v-if="selectedLocation"
-      class="custom-popover"
-      :style="{
-        top: popoverPosition.y + 'px',
-        left: popoverPosition.x + 'px',
-      }"
-    >
-      <h3>{{ selectedLocation.name }}</h3>
-      <p>Category: {{ selectedLocation.category }}</p>
-      <p>{{ selectedLocation.price }}</p>
-      <button @click="selectedLocation = null">Close</button>
-    </div>
-    <div id="map"></div>
-
-    <div
-      class="modal fade"
-      id="exampleModal"
-      tabindex="-1"
-      aria-labelledby="exampleModalLabel"
-      aria-hidden="true"
-    >
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="exampleModalLabel">Add Location</h5>
-            <button
-              type="button"
-              class="btn-close"
-              data-bs-dismiss="modal"
-              aria-label="Close"
-            ></button>
-          </div>
-          <div class="modal-body">
-            <div class="form-group">
-              <input
-                type="text"
-                placeholder=" "
-                id="name"
-                v-model="locationData.name"
-              />
-              <label for="username">Name</label>
-            </div>
-            <div class="form-group">
-              <label for="experienceType" class="select-label"
-                >Experience Type</label
-              >
-              <select id="experienceType" v-model="locationData.experienceType">
-                <option disabled value="">Select experience</option>
-                <option
-                  v-for="option in locationData.experienceOptions"
-                  :key="option"
-                >
-                  {{ option }}
-                </option>
-              </select>
-            </div>
-
-            <!-- Preference -->
-            <div class="form-group">
-              <label for="preference" class="select-label">Preference</label>
-              <select id="preference" v-model="locationData.preference">
-                <option disabled value="">Select preference</option>
-                <option
-                  v-for="option in locationData.preferenceOptions"
-                  :key="option"
-                >
-                  {{ option }}
-                </option>
-              </select>
-            </div>
-
-            <!-- Mood-based -->
-            <div class="form-group">
-              <label for="moodBased" class="select-label">Mood-based</label>
-              <select id="moodBased" v-model="locationData.moodBased">
-                <option disabled value="">Select mood</option>
-                <option
-                  v-for="option in locationData.moodOptions"
-                  :key="option"
-                >
-                  {{ option }}
-                </option>
-              </select>
-            </div>
-
-            <!-- Time of Day -->
-            <div class="form-group">
-              <label for="timeOfDay" class="select-label">Time of Day</label>
-              <select id="timeOfDay" v-model="locationData.timeOfDay">
-                <option disabled value="">Select time</option>
-                <option
-                  v-for="option in locationData.timeOfDayOptions"
-                  :key="option"
-                >
-                  {{ option }}
-                </option>
-              </select>
-            </div>
-
-            <div class="form-group">
-              <input
-                type="text"
-                placeholder=" "
-                id="price"
-                v-model="locationData.price"
-              />
-              <label for="price">Price</label>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button
-              type="button"
-              class="btn btn-secondary"
-              data-bs-dismiss="modal"
+    <div class="main-container d-flex">
+      <div class="sidebar" :class="{ collapsed: isSidebarCollapsed }">
+        <div class="trip-div" v-if="!isSidebarCollapsed">
+          <ul>
+            <li
+              v-for="(trip, index) in trips"
+              :key="index"
+              @click="openTripChat(trip)"
             >
-              Close
-            </button>
-            <button
-              type="button"
-              class="btn btn-primary"
-              @click="addLocation()"
-            >
-              Add Location
-            </button>
-          </div>
+              {{ trip.name }}
+            </li>
+          </ul>
+        </div>
+        <div class="arrow-div" @click="toggleSidebar">
+          <i class="fa-solid fa-arrow-right"></i>
+        </div>
+        <div
+          class="arrow-div"
+          @click="toggleSidebar"
+          v-if="!isSidebarCollapsed"
+        >
+          <i class="fa-solid fa-arrow-left"></i>
         </div>
       </div>
-    </div>
-    <!-- Social Clock Buttons -->
-    <div class="social-clock">
-      <div class="social-clock__list" :class="{ open: isMenuOpen }">
-        <button
-          class="social-clock__button twitter"
-          title="Pointer"
-          @click="togglePointer('click')"
+      <div class="main-content-container">
+        <div
+          v-if="selectedLocation"
+          class="custom-popover"
+          :style="{
+            top: popoverPosition.y + 'px',
+            left: popoverPosition.x + 'px',
+          }"
         >
-          <i class="fa-solid fa-arrow-pointer"></i>
-        </button>
-        <button
-          class="social-clock__button github"
-          title="Location"
-          @click="togglePointer('current')"
-        >
-          <i class="fa-solid fa-location-crosshairs"></i>
-        </button>
-      </div>
+          <h3>{{ selectedLocation.name }}</h3>
+          <p>Category: {{ selectedLocation.category }}</p>
+          <p>{{ selectedLocation.price }}</p>
+          <button @click="selectedLocation = null">Close</button>
+        </div>
+        <div v-if="!selectedTrip">
+          <div id="map"></div>
+        </div>
+        <div v-else class="chat-container">
+          <h5>Chat: {{ selectedTrip.name }}</h5>
+          <span>Close</span>
+          <div class="chat-box">
+            <div
+              v-for="(msg, i) in tripMessages[selectedTrip._id]"
+              :key="i"
+              class="chat-message"
+            >
+              <strong>{{ msg.senderName }}:</strong> {{ msg.content }}
+            </div>
+          </div>
+          <input
+            v-model="chatInput"
+            @keyup.enter="sendMessage"
+            placeholder="Type a message..."
+          />
+        </div>
 
-      <button
-        class="social-clock__trigger add-button"
-        @click="toggleMenu"
-        aria-label="Toggle Menu"
-      >
-        <!-- <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512">
+        <div
+          class="modal fade"
+          id="exampleModal"
+          tabindex="-1"
+          aria-labelledby="exampleModalLabel"
+          aria-hidden="true"
+        >
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Add Location</h5>
+                <button
+                  type="button"
+                  class="btn-close"
+                  data-bs-dismiss="modal"
+                  aria-label="Close"
+                ></button>
+              </div>
+              <div class="modal-body">
+                <div class="form-group">
+                  <input
+                    type="text"
+                    placeholder=" "
+                    id="name"
+                    v-model="locationData.name"
+                  />
+                  <label for="username">Name</label>
+                </div>
+                <div class="form-group">
+                  <label for="experienceType" class="select-label"
+                    >Experience Type</label
+                  >
+                  <select
+                    id="experienceType"
+                    v-model="locationData.experienceType"
+                  >
+                    <option disabled value="">Select experience</option>
+                    <option
+                      v-for="option in locationData.experienceOptions"
+                      :key="option"
+                    >
+                      {{ option }}
+                    </option>
+                  </select>
+                </div>
+
+                <!-- Preference -->
+                <div class="form-group">
+                  <label for="preference" class="select-label"
+                    >Preference</label
+                  >
+                  <select id="preference" v-model="locationData.preference">
+                    <option disabled value="">Select preference</option>
+                    <option
+                      v-for="option in locationData.preferenceOptions"
+                      :key="option"
+                    >
+                      {{ option }}
+                    </option>
+                  </select>
+                </div>
+
+                <!-- Mood-based -->
+                <div class="form-group">
+                  <label for="moodBased" class="select-label">Mood-based</label>
+                  <select id="moodBased" v-model="locationData.moodBased">
+                    <option disabled value="">Select mood</option>
+                    <option
+                      v-for="option in locationData.moodOptions"
+                      :key="option"
+                    >
+                      {{ option }}
+                    </option>
+                  </select>
+                </div>
+
+                <!-- Time of Day -->
+                <div class="form-group">
+                  <label for="timeOfDay" class="select-label"
+                    >Time of Day</label
+                  >
+                  <select id="timeOfDay" v-model="locationData.timeOfDay">
+                    <option disabled value="">Select time</option>
+                    <option
+                      v-for="option in locationData.timeOfDayOptions"
+                      :key="option"
+                    >
+                      {{ option }}
+                    </option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <input
+                    type="text"
+                    placeholder=" "
+                    id="price"
+                    v-model="locationData.price"
+                  />
+                  <label for="price">Price</label>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button
+                  type="button"
+                  class="btn btn-secondary"
+                  data-bs-dismiss="modal"
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-primary"
+                  @click="addLocation()"
+                >
+                  Add Location
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Create Trip Modal -->
+        <div
+          class="modal fade"
+          id="createTripModal"
+          tabindex="-1"
+          aria-labelledby="createTripLabel"
+          aria-hidden="true"
+        >
+          <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" id="createTripLabel">Create a Trip</h5>
+                <button
+                  type="button"
+                  class="btn-close"
+                  data-bs-dismiss="modal"
+                  aria-label="Close"
+                ></button>
+              </div>
+              <div class="modal-body">
+                <input
+                  type="text"
+                  class="form-control mb-3"
+                  v-model="tripData.name"
+                  placeholder="Trip Name"
+                />
+
+                <label>Select Members:</label>
+                <div
+                  class="form-check"
+                  v-for="friend in userFriends"
+                  :key="friend"
+                >
+                  <input
+                    type="checkbox"
+                    class="form-check-input"
+                    :value="friend"
+                    v-model="tripData.members"
+                  />
+                  <label class="form-check-label">{{ friend }}</label>
+                </div>
+
+                <!-- Placeholder for chat -->
+                <div class="mt-3">
+                  <label>Group Chat (Coming Soon)</label>
+                  <textarea
+                    class="form-control"
+                    rows="3"
+                    disabled
+                    placeholder="Chat will be enabled after trip creation..."
+                  ></textarea>
+                </div>
+              </div>
+
+              <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">
+                  Cancel
+                </button>
+                <button class="btn btn-primary" @click="createTrip">
+                  Create
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Social Clock Buttons -->
+        <div class="social-clock">
+          <div class="social-clock__list" :class="{ open: isMenuOpen }">
+            <button
+              class="social-clock__button twitter"
+              title="Pointer"
+              @click="togglePointer('click')"
+            >
+              <i class="fa-solid fa-arrow-pointer"></i>
+            </button>
+            <button
+              class="social-clock__button github"
+              title="Location"
+              @click="togglePointer('current')"
+            >
+              <i class="fa-solid fa-location-crosshairs"></i>
+            </button>
+          </div>
+
+          <button
+            class="social-clock__trigger add-button"
+            @click="toggleMenu"
+            aria-label="Toggle Menu"
+          >
+            <!-- <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512">
           <path
             d="M352 224c53 0 96-43 96-96s-43-96-96-96s-96 43-96 96c0 4 .2 8 .7 11.9l-94.1 47C145.4 170.2 121.9 160 96 160c-53 0-96 43-96 96s43 96 96 96c25.9 0 49.4-10.2 66.6-26.9l94.1 47c-.5 3.9-.7 7.8-.7 11.9c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-25.9 0-49.4 10.2-66.6 26.9l-94.1-47c.5-3.9 .7-7.8 .7-11.9s-.2-8-.7-11.9l94.1-47C302.6 213.8 326.1 224 352 224z"
           ></path>
         </svg> -->
-        <i class="fa-solid fa-plus p-2"></i>
-      </button>
+            <i class="fa-solid fa-plus p-2"></i>
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -266,6 +383,15 @@ import markerImage from "../assets/mapmarker.png";
 import { Modal } from "bootstrap";
 import axios from "axios";
 import { useRouter } from "vue-router";
+import {
+  socket,
+  connectSocket,
+  subscribeToTrip,
+  registerMessageHandler,
+  isConnected,
+  messages,
+  tripMessages
+} from "../webSocket";
 import Navbar from "./Navbar.vue";
 const modalInstance = ref(null);
 const map = ref(null);
@@ -313,6 +439,7 @@ const locationData = reactive({
   ],
 });
 const markers = reactive([]);
+const isShowTripModal = ref(false);
 const filters = reactive(["hotel", "office", "family", "date", "All"]);
 const selectedLocation = ref(null);
 const popoverPosition = ref({ x: 0, y: 0 });
@@ -320,6 +447,20 @@ const userInfo = reactive({
   username: "",
   token: "",
 });
+const tripData = reactive({
+  name: "",
+  members: [],
+});
+const trips = ref([]);
+const isSidebarCollapsed = ref(true);
+const selectedTrip = ref(null);
+const chatInput = ref('');
+const toggleSidebar = () => {
+  isSidebarCollapsed.value = !isSidebarCollapsed.value;
+  setTimeout(() => {
+    map.value.resize();
+  }, 300);
+};
 onMounted(() => {
   getUserLocation();
   let userId = localStorage.getItem("username");
@@ -328,12 +469,106 @@ onMounted(() => {
   getLocations();
   getUserFriends();
   getFriendRequests();
+  getTrips();
+  connectSocket(userInfo.token);
+  setTimeout(() => {
+    trips.value.forEach((trip) => {
+      subscribeToTrip(trip._id);
+    });
+  }, 500);
+  registerMessageHandler();
 });
 
-onUnmounted(()=>{
+onUnmounted(() => {
   clearInterval(intervalId);
-})
+});
+const showCreateTripModal = () => {
+  // debugger;
+  isShowTripModal.value = !isShowTripModal.value;
 
+  if (isShowTripModal.value) {
+    const tripmodal = document.getElementById("createTripModal");
+    const tripmodalInstance = new Modal(tripmodal);
+    tripmodalInstance.show();
+  }
+};
+
+async function  openTripChat(trip) {
+  debugger
+  selectedTrip.value = trip;
+  // subscribeToTrip(trip._id); 
+  const request = {
+      tripId: trip._id,
+    };
+    let response = await axios.post(
+      "http://localhost:5002/api/user/get-trip-messages",
+      request,
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      }
+    );
+    debugger
+  // Ensure message array exists
+  if (!tripMessages.value[trip._id]) {
+    tripMessages.value[trip._id] = response.data;
+  }
+}
+function sendMessage() {
+  if (!chatInput.value || !selectedTrip.value) return;
+
+  const msg = {
+    type: 'chat',
+    tripId: selectedTrip.value._id,
+    content: chatInput.value,
+  };
+
+  socket.value.send(JSON.stringify(msg));
+  chatInput.value = '';
+}
+const createTrip = async () => {
+  // debugger;
+  try {
+    tripData.members.push(locationData.username);
+    const request = {
+      createdBy: locationData.username,
+      name: tripData.name,
+      members: tripData.members,
+    };
+    let response = await axios.post(
+      "http://localhost:5002/api/user/create-trip",
+      request,
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      }
+    );
+  } catch (error) {
+    console.error("the error in creating trip is", error);
+  }
+};
+const getTrips = async () => {
+  try {
+    const request = {
+      username: locationData.username,
+    };
+    let response = await axios.post(
+      "http://localhost:5002/api/user/get-trips",
+      request,
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      }
+    );
+    console.log(response);
+    trips.value = response.data;
+  } catch (error) {
+    console.error("the error in creating trip is", error);
+  }
+};
 const acceptFriendRequest = async (friendUsername) => {
   try {
     let request = {
@@ -349,12 +584,12 @@ const acceptFriendRequest = async (friendUsername) => {
         },
       }
     );
-    debugger;
+    // debugger;
     if (response.status === 200) {
       friendRequests.value = friendRequests.value.filter(
         (username) => username !== friendUsername
       );
-    } 
+    }
     console.log(response);
   } catch (error) {
     console.error("the error in accept friend request is", error);
@@ -380,7 +615,7 @@ const getFriendRequests = async () => {
     console.error("the error in the getting friend request is", error);
   }
 };
-const intervalId =  setInterval(getFriendRequests, 10000);
+const intervalId = setInterval(getFriendRequests, 10000);
 
 const getUserFriends = async () => {
   try {
@@ -404,7 +639,7 @@ const getUserFriends = async () => {
   }
 };
 const isFriendCheck = (username) => {
-  debugger;
+  // debugger;
   return !userFriends.value.includes(username);
 };
 const friendRequestsCheck = () => {
@@ -444,7 +679,7 @@ const searchUsers = async () => {
         },
       }
     );
-    debugger;
+    // debugger;
     searchResults.value = response.data.friends;
     // console.log(response.data.friends);
     // searchResults.length = 0; // clear it first
@@ -479,7 +714,7 @@ const getLocations = async () => {
 };
 
 const createMarkers = (locations) => {
-  debugger;
+  // debugger;
   locations.forEach((location) => {
     let locationCor = location.location.coordinates;
     const markerEl = document.createElement("img");
@@ -684,7 +919,7 @@ const logOut = async () => {
 
 <style scoped>
 #map {
-  width: 100%;
+  width: 100;
   height: 100vh;
   border: 1px solid #ccc;
   position: relative;
@@ -920,4 +1155,89 @@ const logOut = async () => {
   border-radius: 50%;
   border: 2px solid white;
 }
+.main-content-container {
+  width: 100%;
+  height: 100vh;
+  flex: 1;
+}
+.sidebar {
+  position: relative;
+  width: 15vw;
+  transition: width 0.3s ease;
+}
+.arrow-div {
+  position: absolute;
+  top: 200px;
+  right: -20px;
+  z-index: 200;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  justify-content: center;
+  background-color: #007bff;
+  align-items: center;
+  cursor: pointer;
+  border: 2px solid black;
+}
+.collapsed {
+  width: 2vw !important;
+}
+.trip-div {
+  display: flex;
+  flex-direction: column;
+  margin-top: 50px;
+}
+.trip-div ul {
+  padding-left: 0px;
+}
+.trip-div li {
+  list-style: none;
+  padding: 5px;
+  border: 2px solid black;
+  margin: 5px;
+}
+.chat-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 1rem;
+  background-color: #f8f9fa;
+  border-left: 1px solid #dee2e6;
+  margin-top: 30px;
+}
+
+.chat-box {
+  flex: 1;
+  overflow-y: auto;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 1rem;
+  background-color: white;
+  margin-bottom: 1rem;
+  max-height: 500px; /* or use 100% if parent is constrained */
+}
+
+.chat-message {
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  background-color: #e9ecef;
+  word-wrap: break-word;
+}
+
+.chat-message strong {
+  color: #343a40;
+  margin-right: 0.5rem;
+}
+
+.chat-container input {
+  border: 1px solid #ced4da;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  font-size: 1rem;
+  outline: none;
+  width: 100%;
+}
+
 </style>
